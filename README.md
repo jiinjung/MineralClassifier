@@ -1,39 +1,99 @@
-# MineralClassifier
-The purpose of this repository is for the code example and visualization for the current research.
+# MineralClassifier and Rock Type Classification
 
-## Dataset and Model Description
-This current system employs deep learning semantic segmentation models to process the input Scanning Electron Microscopy (SEM) images of lunar mare basalts and corresponding pixel scales, and generated a segmented mineral map as output.
+[**Cite**] Jung, J. I., Tikoo, S. M., Chung, J., & O. Nichols, C. I. (2026). Automated Mineral Identification and Rock-Type Classification of Lunar Mare Basalts Using SEM Images. Journal of Geophysical Research: Machine Learning and Computation, 3(4), e2025JH001124. https://doi.org/10.1029/2025JH001124
 
-
+[**Dataset**] Jung, J. I., Tikoo, S., Chung, J.& Nichols, C. I. O. (2026). Data and Software for Automated Mineral Identification and Rock-Type Classification of Lunar Mare Basalts using SEM Images [Dataset]. Zenodo. https://doi.org/10.5281/zenodo.20698563
 
 <p align="center">
  <img width="700" alt="inputoutput" src="https://github.com/jiinjung/MineralClassifier/assets/87342008/529ccc58-3f72-4dde-b052-9d588ef965f6">
 </p>
-
-Typically, SEM images (or other microscopic images) is given a unique scale, the pixel scale ranging approximately between 0.01 µm/px and 10 µm/px. As this scale variability leads to different patterns or mineral occurrences within the same sample, we employed multi U-Net architectures, that assign images to different U-Net architectures based on their scale.
-
-<p align="center">
-<img width="300" alt="arc3-01" src="https://github.com/jiinjung/MineralClassifier/assets/87342008/7f912b87-c6f1-4438-9adb-0ebe0928952d">
-</p>
-
-The model has been trained on a dataset of 3457 images of Apollo mare basalt SEM images (split into 2605 images for training, 652 for validation, and 200 for testing)
-
-## Performances of the current model
-
-Overall, **the Multi U-Net outperformed the Single U-Net**. Both algorithms effectively captured larger and commonly occurring mineral grains such as _Spinel_, _Pyroxene_, _Plagioclase_, and _Void_, identifiable based on their intensity and shapes. The smaller grains became more apparent for Multi U-Net model (e.g., _FeNi_ grains or _Troilite_). However, mineral groups underrepresented in the dataset due to their minimal occurrences in the actual rocks and the scale of the image (e.g., _Zircon_, _Phosphate_, and _Olivine_) exhibited a Intersection over Union (IoU) scores.
+This current system employs deep learning semantic segmentation models to process the input Scanning Electron Microscopy (SEM) images of lunar mare basalts and corresponding pixel scales, and generated a segmented mineral map as output.
 
 
-<p align="center">
-<img width="600" alt="comparison_poster-01" src="https://github.com/jiinjung/MineralClassifier/assets/87342008/432c2b8e-e93e-4ba7-93a1-8ea2eab2a7c0">
-</p>
+# Overview
+This project implements a two-stage pipeline:
+ 
+1. Semantic Segmentation: U-Net based models to segment minerals from SEM Back Scattering Electron (BSE) images
+2. Rock Classification: Multiple machine learning classifiers to classify rock types based on modal mineral abundances
 
-The model gives a pixel accuracy (PA) of 0.90 for the training set, 0.90 for the validation set, and 0.91 for the test set, when applied to the large scale (> 0.25µm/px) image dataset. The confusion matrix for this datset indicated successful identification of _Pyroxene_ and _Void_. However, given that the _Pyroxene_ group is the most abundant mineral in Apollo mare basalt samples, these large scale images often misclassified other minerals as _Pyroxene_. This may be due to blurry boundaries in SEM images, leading to misclassification into the adjacent mineral category. Nonetheless, apart from the _Pyroxene_ column, commonly occurred minerals such as _Spinel_ and _Plagioclase_ were correctly-classified, and their normalized abundances closely matched the actual modal abundances described in the Apollo sample compendium. As for the minerals _FeNi_ and _FeS_, their small size made their allocations in the confusion matrix seem incorrect and leading low IoU values.
 
-As for the small scale image dataset (< 0.25µm/px), the model demonstrated a PA of 0.83 for the training set, 0.86 for the validation set, and 0.88 for the test set. The confusion matrix revealed excellent identification of well-represented groups such as _Void_, _FeNi_, _FeS_, _Spinel_, _Pyroxene_, and _Plagioclase_, with respectable IoU scores. However, _Glass_ in small scale images often blended indistinguishably with _Plagioclase_, making it difficult to be accurately identified.
+# Key Features
 
-<p align="center">
-<img width="600" alt="confusion_matrix" src="https://github.com/jiinjung/MineralClassifier/assets/87342008/09da003e-9c60-47ad-8a36-cad94560439e">
-</p>
+## Three U-Net variants that handle pixel scale variability:
+- UNet_1: Baseline model without scale conditioning  (loss: cross-entropy; CE+Dice and CE+GDL variants)
+- UNet_2: Dual UNet with routing based on pixel scale threshold (1.8 μm)
+- UNet_3: Continuous scale conditioning at bottleneck layer
+ 
+## Multiple classification approaches:
+- Rule-based baseline classifier
+- Gaussian Naive Bayes
+- Support Vector Machine (RBF)
+- Logistic Regression
+- Random Forest
+- Multilayer Perceptron
+- XGBoost
 
-To improve the detection of these underrepresented groups, the dataset could be expanded to include more of these minerals, and the image scale could be further divided into more than just two categories for the future work.
+  
+# Dataset
+The project uses two main datasets:
+
+## 1. Segmentation Dataset (`/data-sem-label`)
+Contains SEM images and segmentation masks:
+- Input images: 256×256 grayscale SEM images
+- Output images: 256×256 segmentation masks with 10 mineral classes
+- Pixel scale files: Text files containing pixel size information (0.02-20 μm)
+- Structure: Organized in folders with `input-images/`, `output-images/`, and `input-features/` subdirectories
+- Mineral classes:
+- `c₀`: Void
+- `c₁`: Metallic Fe (Kamacite, Martensite)
+- `c₂`: FeS (Troilite)
+- `c₃`: Metal oxides (Ilmenite, Ulvospinel, Chromite)
+- `c₄`: Pyroxene group
+- `c₅`: Plagioclase
+- `c₆`: Silicate minerals (Quartz, Cristobalite, Glass)
+- `c₇`: Olivine
+- `c₈`: Late-stage melt compositions (Mesostasis, Groundmass)
+- `c₉`: Other (Phosphate, Zircon, etc.)
+  
+##  2. Classification Dataset (`data-lsc-modal.xlsx`)
+Excel file containing modal mineral abundance data for rock classification:
+Mineral abundance columns:
+- `Ol`: Olivine abundance
+- `Py`: Pyroxene abundance
+- `Pl`: Plagioclase abundance
+- `Ms`: Mesostasis abundance
+- `Si`: Silica minerals abundance
+- `Op`: Opaque minerals abundance (Fe-Ni, FeS, metal oxides)
+Rock type labels: 
+- Ilmenite basalt (class 0)
+- Olivine basalt (class 1)
+- Pigeonite basalt (class 2)
+ 
+- Used for training and evaluating rock classification models based on modal mineral abundances extracted from segmentation results
+# Training Details
+## Segmentation Models
+- U-Net with encoder-decoder structure and skip connections
+- Input: 256×256 grayscale images (+ pixel scale (scalar))
+- Output: 256×256 segmentation masks (10 classes)
+- Loss: Cross-entropy loss, Dice loss, Generalized dice loss
+- Metric: Pixel accuracy, intersection over union
+- Data augmentation: 90-degree rotations, brightness adjustment
+ 
+## Classification Models
+### Features: Modal mineral abundances extracted from segmentation masks:
+- `Ol`: Olivine abundance
+- `Py`: Pyroxene abundance
+- `Pl`: Plagioclase abundance
+- `Ms`: Mesostasis abundance
+- `Si`: Silicate minerals abundance
+- `Op`: Opaque minerals abundance (Fe-Ni, FeS, metal oxides)
+- Classes: 3 rock types (Ilmenite basalt, Olivine basalt, Pigeonite basalt)
+
+# Workflow:
+1. Segmentation model extracts mineral pixel counts from SEM images
+2. Pixel counts are converted to modal abundances (percentages)
+3. Classification models predict rock type from modal abundances
+
+
+
 
